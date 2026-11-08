@@ -1,0 +1,52 @@
+{
+  "name": "Suomi 61 · Finnish A1.0–A1.3",
+  "short_name": "Suomi 61",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0E2238",
+  "theme_color": "#0E2238",
+  "lang": "fi",
+  "description": "Finnish A1 course for beginners: chapters, words, sentence lab, flashcards and tests. Works offline.",
+  "categories": [
+    "education"
+  ],
+  "orientation": "any",
+  "shortcuts": [
+    {
+      "name": "Tänään · Today",
+      "url": "./#today"
+    },
+    {
+      "name": "Kortit · Flashcards",
+      "url": "./#cards"
+    },
+    {
+      "name": "Lauseet · Sentence lab",
+      "url": "./#lause"
+    },
+    {
+      "name": "Kääntäjä · Translator",
+      "url": "./#kaannos"
+    }
+  ],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

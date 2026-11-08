@@ -1,0 +1,51 @@
+// Build: node build.js → dist/suomi61.html (Claude artifact) and docs/ (installable phone app for GitHub Pages)
+const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
+const R = p => fs.readFileSync(path.join(__dirname, p), 'utf8');
+const DATA = ['data/01_base.js', 'data/10_calendar.js', 'data/20_lessons.js', 'data/30_days.js', 'data/40_dialogues.js', 'data/50_tests.js', 'data/60_chapters.js', 'data/61_stories.js','data/70_sentences.js'];
+const APP = ['app/00_core.js', 'app/05_lang.js', 'app/10_engine.js', 'app/20_srs.js', 'app/30_ui.js', 'app/40_today.js', 'app/50_learn.js', 'app/55_translate.js', 'app/60_train.js', 'app/70_chapters.js','app/75_sentences.js', 'app/90_init.js'];
+const js = [...DATA, ...APP].map(f => `// ---- ${f} ----\n` + R('src/' + f)).join('\n').replace(/<\/script/gi, '<\\/script');
+const css = R('src/style.css');
+const shell = R('src/shell.html');
+const GFONTS = `<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Noto+Sans:wght@400;600;700;800&family=Noto+Sans+Devanagari:wght@400;500;600&family=Noto+Sans+Arabic:wght@400;600&display=swap" rel="stylesheet">`;
+const page = (head, pre, fonts = GFONTS) => shell.replace('<!--FONTS-->', fonts).replace('<!--HEAD-->', head).replace('/*CSS*/', () => css).replace('/*JS*/', () => pre + js);
+
+fs.mkdirSync(path.join(__dirname, 'dist'), { recursive: true });
+fs.writeFileSync(path.join(__dirname, 'dist/suomi61.html'), page('', ''));
+
+// phone app
+const ver = crypto.createHash('sha1').update(js + css + shell + R('src/fonts/fonts.css') + R('README.md') + R('build.js')).digest('hex').slice(0, 10);
+const head = `<link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#0E2238"><link rel="icon" href="icons/icon-192.png"><link rel="apple-touch-icon" href="icons/apple-touch-icon.png"><meta name="description" content="Finnish A1 course: 10 chapters, 1,300 words, sentence lab, flashcards, listening, speaking and tests. Works offline."><meta name="apple-mobile-web-app-capable" content="yes">`;
+// phone app: everything up to the app markup goes into <head>, so Chrome finds the manifest and the app can be installed
+const full = page(head, 'window.FI61_PWA=true;\n', '<link rel="stylesheet" href="fonts/fonts.css">');
+const cut = full.indexOf('<div class="app">');
+const doc = `<!doctype html><html lang="fi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>\n` + full.slice(0, cut) + '\n</head><body>\n' + full.slice(cut) + '\n</body></html>';
+const D = path.join(__dirname, 'docs');
+fs.mkdirSync(path.join(D, 'icons'), { recursive: true });
+// self-hosted fonts, so the app looks right offline from the first visit
+const ID = path.join(__dirname, 'src/icons'); fs.readdirSync(ID).forEach(f => fs.copyFileSync(path.join(ID, f), path.join(D, 'icons', f)));
+const FD = path.join(__dirname, 'src/fonts'); fs.mkdirSync(path.join(D, 'fonts'), { recursive: true });
+const FONTS = fs.readdirSync(FD); FONTS.forEach(f => fs.copyFileSync(path.join(FD, f), path.join(D, 'fonts', f)));
+fs.writeFileSync(path.join(D, '.nojekyll'), '');
+fs.writeFileSync(path.join(D, 'index.html'), doc);
+fs.writeFileSync(path.join(D, 'manifest.webmanifest'), JSON.stringify({ name: 'Suomi 61 · Finnish A1.0–A1.3', short_name: 'Suomi 61', start_url: './', scope: './', display: 'standalone', background_color: '#0E2238', theme_color: '#0E2238', lang: 'fi', description: 'Finnish A1 course for beginners: chapters, words, sentence lab, flashcards and tests. Works offline.', categories: ['education'], orientation: 'any', shortcuts: [{ name: 'Tänään · Today', url: './#today' }, { name: 'Kortit · Flashcards', url: './#cards' }, { name: 'Lauseet · Sentence lab', url: './#lause' }, { name: 'Kääntäjä · Translator', url: './#kaannos' }], icons: [{ src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' }, { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' }, { src: 'icons/icon-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }] }, null, 2));
+fs.writeFileSync(path.join(D, 'sw.js'), `// Suomi 61 service worker · cache ${ver}
+const CACHE = 'suomi61-${ver}';
+const CORE = ${JSON.stringify(['./', 'index.html', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable.png', 'icons/apple-touch-icon.png', ...FONTS.filter(f => /\.(woff2|css)$/.test(f)).map(f => 'fonts/' + f)])};
+self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE))); });
+// old app caches and the offline translator packs of earlier versions are removed
+self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => (k.startsWith('suomi61-') && k !== CACHE) || k === 'transformers-cache').map(k => caches.delete(k)))).then(() => self.clients.claim())); });
+self.addEventListener('message', e => { if (e.data === 'skip') self.skipWaiting(); });
+self.addEventListener('fetch', e => {
+  const u = new URL(e.request.url);
+  if (e.request.method !== 'GET') return;
+  // fonts: cache first, so they work offline after the first visit
+  if (u.hostname.endsWith('googleapis.com') || u.hostname.endsWith('gstatic.com')) {
+    e.respondWith(caches.open(CACHE).then(c => c.match(e.request).then(r => r || fetch(e.request).then(res => { c.put(e.request, res.clone()); return res; }).catch(() => r))));
+    return;
+  }
+  if (u.origin === location.origin) e.respondWith(caches.match(e.request, { ignoreSearch: true }).then(r => r || fetch(e.request).then(res => { const cp = res.clone(); caches.open(CACHE).then(c => c.put(e.request, cp)); return res; }).catch(() => caches.match('index.html'))));
+});
+`);
+console.log('built', (fs.statSync(path.join(__dirname, 'dist/suomi61.html')).size / 1024).toFixed(0) + ' KB', 'cache', ver);

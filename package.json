@@ -1,0 +1,8 @@
+{
+  "name": "suomi61",
+  "version": "2026.11.8",
+  "private": true,
+  "description": "Suomi 61: Finnish A1 course for beginners. Offline web app for GitHub Pages (the app is in docs/).",
+  "scripts": { "build": "node build.js", "data": "node tools/make_data.js" },
+  "license": "UNLICENSED"
+}
